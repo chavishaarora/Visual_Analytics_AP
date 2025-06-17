@@ -39,12 +39,28 @@ python va_enhanced.py
 Then open http://localhost:8051 in your browser
 
 
+## 📌 Contribution & Acknowledgments
 
-Citation and Attribution
+### ✅ What we implemented ourselves:
+- Data loading and preprocessing for Airbnb, UNESCO, and trail datasets
+- t-SNE + KMeans clustering pipeline for visual grouping of trails
+- Ranking model using Gradient Boosting Regressor
+- Multi-day itinerary logic including trail-site-stay chaining
+- Full Dash app structure and state management using dcc.Store
+- Budget tracker + sliders and feedback integration
+- PDF generation using ReportLab
 
-Libraries Used: Dash, scikit-learn, Plotly, ReportLab
-Icons/Emojis: Unicode characters for visual feedback
-Generative AI: ChatGPT was used to help with code commenting, structure, and documentation
+### 🤖 AI Assistance :
+- Helped generate initial code structure and layout for the Dash app
+- Suggested modular callback patterns and user state handling
+- Assisted with styling the tables, tooltips, and feedback UI
+- Co-developed logic for feedback integration and PDF content design
+- Reviewed and commented portions of code for clarity
+- Debugging
+
+### 📦 External Libraries Used:
+- `dash`, `dash-bootstrap-components`, `dash-leaflet`
+- `pandas`, `numpy`, `scikit-learn`, `plotly`, `reportlab`
 
 
 
