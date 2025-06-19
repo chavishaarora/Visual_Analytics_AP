@@ -18,7 +18,7 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 
-# --- Optional clustering plugin import with fallback ----------------------
+
 try:
     from dash_leaflet.plugins.markercluster import MarkerClusterGroup
 except ImportError:
@@ -29,7 +29,7 @@ def cluster_group(markers):
         return [MarkerClusterGroup(children=markers)]
     return markers
 
-# --- Data loading & preparation --------------------------------------------
+# --- Data loading & preparation -------
 def load_data():
     try:
         if os.path.exists("cleaned_airbnb_selected_cities.csv"):
@@ -89,7 +89,7 @@ unesco_df['culture_category'] = unesco_df['site_name'].apply(
 # Add estimated time for trails
 trails_df['estimated_time'] = trails_df['distance_km'] * 20  # 20 min per km
 
-# --- Embeddings & clustering for trails -----------------------------------
+# --- Embeddings & clustering for trails ---------
 def prepare_adventure_embeddings():
     np.random.seed(0)
     sample = trails_df.copy().reset_index(drop=True)
@@ -107,7 +107,7 @@ def prepare_adventure_embeddings():
 tsne_df, knn_scaled = prepare_adventure_embeddings()
 knn_model           = NearestNeighbors(n_neighbors=min(4,len(tsne_df))).fit(knn_scaled)
 
-# --- Ranking model ---------------------------------------------------------
+# --- Ranking model -------------
 model = None
 def train_ranking_model(all_listings, feedback):
     global model
@@ -236,7 +236,8 @@ def create_pdf(itinerary, total_budget):
                 content.append(Paragraph(f"🥾 <b>{activity['trail_name']}</b> - {activity['distance_km']:.1f} km ({activity['estimated_time']/60:.1f} hrs)", style_item))
             
             elif activity['type'] == 'site':
-                content.append(Paragraph(f"🏛 <b>{activity['site_name']}</b> ({activity['type']}) - Entrance: €{activity['entrance_fee']:.1f}", style_item))
+                fee = activity.get('entrance_fee', 0.0)
+                content.append(Paragraph(f"🏛 <b>{activity['site_name']}</b> ({activity['type']}) – Entrance: €{fee:.1f}",style_item))
             
             elif activity['type'] == 'stay':
                 content.append(Paragraph(f"🏠 <b>€{int(activity['price'])} {activity['room_type']}</b> · ⭐{activity['guest_rating']:.1f}", style_item))
@@ -261,7 +262,7 @@ def create_pdf(itinerary, total_budget):
             if activity['type'] == 'stay':
                 categories["Accommodation"] += activity['price']
             elif activity['type'] == 'site':
-                categories["Activities"] += activity['entrance_fee']
+                categories["Activities"] += activity.get('entrance_fee', 0)
             elif activity['type'] == 'trail':
                 categories["Activities"] += 5  # Small fee for trail access
     
@@ -756,29 +757,34 @@ def handle_side_feedback(sel_airbnb,
                          ul_clicks, ud_clicks,
                          trail_store, unesco_store):
     trig = ctx.triggered_id
-    # reset when new Airbnb selected
-    if trig == 'selected-airbnb-store':
+
+    # 1) Clear-all button
+    if trig == 'clear-button':
         return {}, {}
-    # trail feedback
-    if isinstance(trig, dict) and trig.get('type','').startswith('trail-'):
+
+    # 2) Trail 👍/👎
+    if isinstance(trig, dict) and trig['type'].startswith('trail-'):
         tid = str(trig['index'])
         ts  = trail_store or {}
         ts.setdefault(tid, {'likes':0,'dislikes':0})
         if trig['type']=='trail-like':
-            ts[tid]['likes']    += 1
+            ts[tid]['likes'] += 1
         else:
             ts[tid]['dislikes'] += 1
         return ts, unesco_store or {}
-    # UNESCO feedback
-    if isinstance(trig, dict) and trig.get('type','').startswith('unesco-'):
+
+    # 3) UNESCO 👍/👎
+    if isinstance(trig, dict) and trig['type'].startswith('unesco-'):
         uid = str(trig['index'])
         us  = unesco_store or {}
         us.setdefault(uid, {'likes':0,'dislikes':0})
         if trig['type']=='unesco-like':
-            us[uid]['likes']    += 1
+            us[uid]['likes'] += 1
         else:
             us[uid]['dislikes'] += 1
         return trail_store or {}, us
+
+    # 4) Nothing else changes
     return no_update, no_update
 
 # 8a) Airbnb feedback --------------------------------------------------------
@@ -841,13 +847,17 @@ def toggle_final_modal(done_n, close_n, is_open,
         for day in itinerary:
             for activity in day["activities"]:
                 if activity['type'] == 'stay':
-                    breakdown["Accommodation"] += activity['price']
-                    total_budget += activity['price']
+                    breakdown["Accommodation"] += activity.get('price', 0)
+                    total_budget += activity.get('price', 0)
+
                 elif activity['type'] == 'site':
-                    breakdown["Activities"] += activity['entrance_fee']
-                    total_budget += activity['entrance_fee']
+                    fee = activity.get('entrance_fee', 0)
+                    breakdown["Activities"] += fee
+                    total_budget += fee
+
                 elif activity['type'] == 'trail':
-                    breakdown["Activities"] += 5  # Small fee for trail access
+                    # you were hard-coding €5 for trail access
+                    breakdown["Activities"] += 5
                     total_budget += 5
         
         total_budget += breakdown["Transportation"]
@@ -877,7 +887,7 @@ def toggle_final_modal(done_n, close_n, is_open,
                             html.Strong(activity['site_name'], style={"fontSize": "1.1rem"}),
                             html.Br(),
                             html.Span(f"{activity['type']} • ", className="text-muted"),
-                            html.Span(f"€{activity['entrance_fee']:.1f} entrance • ", className="text-muted"),
+                            html.Span(f"€{activity.get('entrance_fee', 0):.1f} entrance • ", className="text-muted"),
                             html.Span(f"Culture: {activity.get('culture_category', 'Cultural')}", className="text-muted")
                         ])
                     ], className="d-flex align-items-center"))
@@ -985,7 +995,7 @@ def update_itinerary_display(itinerary):
                         html.Strong(activity['site_name'], style={"fontSize": "1.1rem"}),
                         html.Br(),
                         html.Span(f"{activity['type']} • ", className="text-muted"),
-                        html.Span(f"€{activity['entrance_fee']:.1f} entrance • ", className="text-muted"),
+                        html.Span(f"€{activity.get('entrance_fee', 0):.1f} entrance • ", className="text-muted"),
                         html.Span(f"Culture: {activity.get('culture_category', 'Cultural')}", className="text-muted")
                     ])
                 ], className="d-flex align-items-center"))
